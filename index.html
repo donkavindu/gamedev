@@ -2,399 +2,203 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Architect Tycoon Mobile</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mobile Farm Builder</title>
     <style>
-        :root {
-            --safe-top: env(safe-area-inset-top);
-            --safe-bottom: env(safe-area-inset-bottom);
+        body { margin: 0; padding: 0; background: #2c3e50; overflow: hidden; font-family: sans-serif; }
+        canvas { display: block; touch-action: none; }
+        #ui {
+            position: absolute; bottom: 20px; left: 0; right: 0;
+            display: flex; justify-content: center; gap: 10px; pointer-events: none;
         }
-        body { 
-            margin: 0; overflow: hidden; background: #121212; 
-            font-family: 'Segoe UI', system-ui, sans-serif; 
-            color: white; user-select: none; touch-action: none;
-            -webkit-touch-callout: none;
+        .btn {
+            background: #f1c40f; border: 4px solid #d35400; border-radius: 12px;
+            padding: 15px; font-weight: bold; font-size: 14px; color: #d35400;
+            pointer-events: auto; box-shadow: 0 4px 0 #a04000; active-transform: translateY(2px);
         }
-        
-        /* --- MOBILE INTRO SCREEN --- */
-        #intro-screen {
-            position: fixed; inset: 0;
-            background: linear-gradient(180deg, #1e3a5f 0%, #121212 100%);
-            z-index: 3000; display: flex; flex-direction: column; align-items: center; justify-content: center;
-            padding: 20px; text-align: center;
-        }
-        #intro-screen h1 { font-size: 10vw; margin: 0; color: #4a90e2; text-transform: uppercase; }
-        #intro-screen p { color: #888; margin-bottom: 30px; }
-
-        .btn-main {
-            background: #4a90e2; color: white; border: none; width: 80%; max-width: 300px;
-            padding: 18px; border-radius: 50px; font-size: 20px; font-weight: bold;
-            margin: 10px 0; box-shadow: 0 8px 15px rgba(0,0,0,0.3);
-        }
-
-        /* --- MOBILE HUD (TOP) --- */
-        #hud { 
-            position: absolute; top: calc(10px + var(--safe-top)); 
-            width: 100%; display: flex; justify-content: space-around; z-index: 100;
-        }
-        .stat-box { 
-            background: rgba(0,0,0,0.7); backdrop-filter: blur(10px);
-            padding: 8px 15px; border-radius: 30px; border: 1px solid rgba(255,255,255,0.2);
-            font-size: 14px; font-weight: bold;
-        }
-
-        /* --- COLLAPSIBLE CONTRACT (MOBILE) --- */
-        #contract-ui {
-            position: absolute; top: calc(60px + var(--safe-top)); left: 10px; right: 10px;
-            background: rgba(30, 35, 45, 0.95); backdrop-filter: blur(15px);
-            border-radius: 20px; border: 1px solid #4a90e2; padding: 12px;
-            z-index: 200; transition: 0.3s; overflow: hidden;
-            max-height: 400px;
-        }
-        #contract-ui.minimized { max-height: 40px; border-color: #555; }
-        #contract-header { display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 13px; color: #4a90e2; }
-        #blueprint-canvas { background: #000; border-radius: 10px; margin: 10px auto; display: block; width: 100%; max-width: 250px; height: 80px;}
-        .spec-line { font-size: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); padding: 5px 0; display: flex; justify-content: space-between;}
-        .hex-tag { color: #2ecc71; font-family: monospace; }
-
-        /* --- MOBILE BOTTOM CONTROLS --- */
-        #bottom-container {
-            position: absolute; bottom: calc(10px + var(--safe-bottom));
-            left: 0; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 8px; z-index: 500;
-        }
-        
-        #tool-options {
-            background: rgba(40,40,40,0.95); padding: 12px; border-radius: 20px;
-            display: flex; gap: 10px; align-items: center; border: 1px solid rgba(255,255,255,0.1);
-            opacity: 0; transform: translateY(20px); transition: 0.3s; pointer-events: none;
-        }
-        #tool-options.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
-
-        .tool-dock {
-            background: rgba(20, 20, 20, 0.9); backdrop-filter: blur(20px);
-            padding: 10px; border-radius: 35px; display: flex; gap: 5px;
-            width: 95%; justify-content: space-around; border: 1px solid rgba(255,255,255,0.1);
-        }
-
-        .btn-tool {
-            background: #333; border: none; width: 45px; height: 45px; 
-            border-radius: 50%; display: flex; align-items: center; justify-content: center;
-            font-size: 18px; transition: 0.2s;
-        }
-        .btn-tool.active { background: #4a90e2; transform: scale(1.1); box-shadow: 0 0 15px #4a90e2; }
-        .label-tool { font-size: 8px; margin-top: 2px; text-transform: uppercase; opacity: 0.7;}
-
-        #hex-input { 
-            background: #000; border: 1px solid #444; color: #00ff00; 
-            width: 70px; text-align: center; border-radius: 5px; padding: 5px; font-family: monospace;
-        }
-
-        #submit-btn {
-            position: absolute; bottom: calc(85px + var(--safe-bottom)); right: 15px;
-            background: #2ecc71; border: none; width: 60px; height: 60px;
-            border-radius: 50%; color: white; font-weight: bold; font-size: 10px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.5); z-index: 600;
-        }
-        #submit-btn:disabled { background: #444; opacity: 0.5; }
-
-        #feedback {
-            position: absolute; top: 30%; left: 50%; transform: translateX(-50%);
-            font-size: 30px; font-weight: bold; text-align: center; z-index: 2000; display: none;
-        }
-
-        #help-modal {
-            position: fixed; inset: 20px; background: rgba(0,0,0,0.9); 
-            z-index: 4000; border-radius: 30px; padding: 25px; display: none;
-            border: 1px solid #4a90e2;
+        .btn.active { background: #fff; border-color: #27ae60; color: #27ae60; }
+        #stats {
+            position: absolute; top: 10px; left: 10px; color: white;
+            background: rgba(0,0,0,0.5); padding: 10px; border-radius: 8px; pointer-events: none;
         }
     </style>
 </head>
 <body>
 
-<!-- MOBILE INTRO -->
-<div id="intro-screen">
-    <h1>ARCHITECT<br>TYCOON</h1>
-    <p>MOBILE MASTER BUILDER</p>
-    <button class="btn-main" onclick="startGame()">START GAME</button>
-    <button class="btn-main" style="background:#444" onclick="document.getElementById('help-modal').style.display='block'">TUTORIAL</button>
-</div>
+    <div id="stats">💰 <span id="money">100</span> | 🌾 <span id="crops">0</span></div>
 
-<div id="help-modal">
-    <h2 style="color:#f1c40f">Building Rules</h2>
-    <ul style="font-size:14px; line-height:1.8; color:#ccc">
-        <li><b>Foundation:</b> Exact size + Hex color.</li>
-        <li><b>Walls:</b> Match the Level (Height) + Hex color.</li>
-        <li><b>Door/Window:</b> Match the required count.</li>
-        <li><b>Roof:</b> Covers the whole foundation.</li>
-        <li><b>Camera:</b> Toggle 📷 to rotate and Finish.</li>
-    </ul>
-    <button class="btn-main" onclick="document.getElementById('help-modal').style.display='none'">GOT IT</button>
-</div>
-
-<!-- GAME UI -->
-<div id="hud">
-    <div class="stat-box">💰 $<span id="money">1000</span></div>
-    <div class="stat-box">⭐ XP: <span id="level">1</span></div>
-</div>
-
-<div id="contract-ui" onclick="this.classList.toggle('minimized')">
-    <div id="contract-header">
-        <span>ACTIVE CONTRACT</span>
-        <span style="font-size:10px">TAP TO TOGGLE</span>
-    </div>
-    <canvas id="blueprint-canvas"></canvas>
-    <div id="spec-container"></div>
-</div>
-
-<div id="feedback">SUCCESS!</div>
-
-<button id="submit-btn" onclick="validateProject()" disabled>FINISH<br>JOB</button>
-
-<div id="bottom-container">
-    <!-- Context Menu -->
-    <div id="tool-options">
-        <div id="height-btns" style="display:flex; gap:8px;">
-            <button class="btn-tool" style="font-size:12px" id="h1" onclick="setLevel(1)">1x</button>
-            <button class="btn-tool" style="font-size:12px" id="h2" onclick="setLevel(2)">2x</button>
-            <button class="btn-tool" style="font-size:12px" id="h3" onclick="setLevel(3)">3x</button>
-        </div>
-        <button class="btn-tool" onclick="rotate90()">↻</button>
-        <div id="color-group" style="display:flex; flex-direction:column; align-items:center; border-left: 1px solid #444; padding-left:10px;">
-            <input type="text" id="hex-input" value="#FFFFFF" maxlength="7" oninput="updateHex(this.value)">
-            <span style="font-size:7px; margin-top:3px">HEX COLOR</span>
-        </div>
+    <div id="ui">
+        <div id="move-btn" class="btn active" onclick="setMode('move')">🚶 MOVE</div>
+        <div id="plant-btn" class="btn" onclick="setMode('plant')">🌱 PLANT ($10)</div>
+        <div id="build-btn" class="btn" onclick="setMode('build')">🏠 BUILD ($50)</div>
     </div>
 
-    <!-- Main Dock -->
-    <div class="tool-panel tool-dock">
-        <div onclick="setTool('camera', this.children[0])" style="text-align:center">
-            <button class="btn-tool active" id="camera-btn">📷</button>
-            <span class="label-tool">Cam</span>
-        </div>
-        <div onclick="setTool('floor', this.children[0])" style="text-align:center">
-            <button class="btn-tool">⬛</button>
-            <span class="label-tool">Floor</span>
-        </div>
-        <div onclick="setTool('wall', this.children[0])" style="text-align:center">
-            <button class="btn-tool">🧱</button>
-            <span class="label-tool">Wall</span>
-        </div>
-        <div onclick="setTool('door', this.children[0])" style="text-align:center">
-            <button class="btn-tool">🚪</button>
-            <span class="label-tool">Door</span>
-        </div>
-        <div onclick="setTool('window', this.children[0])" style="text-align:center">
-            <button class="btn-tool">🪟</button>
-            <span class="label-tool">Win</span>
-        </div>
-        <div onclick="setTool('roof', this.children[0])" style="text-align:center">
-            <button class="btn-tool">🏠</button>
-            <span class="label-tool">Roof</span>
-        </div>
-        <div onclick="setTool('delete', this.children[0])" style="text-align:center">
-            <button class="btn-tool" style="background:#555">❌</button>
-            <span class="label-tool">Erase</span>
-        </div>
-    </div>
-</div>
+    <canvas id="gameCanvas"></canvas>
 
-<script type="importmap">
-    { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
-</script>
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const moneyEl = document.getElementById('money');
+    const cropsEl = document.getElementById('crops');
 
-<script type="module">
-    import * as THREE from 'three';
-    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    // Game Constants
+    const TILE_SIZE = 60;
+    const GRID_SIZE = 15; // 15x15 map
+    const PLAYER_SPEED = 4;
 
-    // Game Variables
-    const UNIT_H = 1.5, GRID = 1.0, WALL_T = 0.12;
-    const C_ROOF = "#8B4513", C_WINDOW = "#2c3e50", C_DOOR = "#5d4037";
-    let cash = 1000, xp = 1, contract = {};
-    let currentTool = 'camera', currentLevel = 1, rot = 0, activeHex = "#FFFFFF";
-
-    // Three.js Scene
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x121212);
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    document.body.appendChild(renderer.domElement);
-
-    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-    const sun = new THREE.DirectionalLight(0xffffff, 1);
-    sun.position.set(5, 10, 7);
-    scene.add(sun);
-
-    scene.add(new THREE.GridHelper(20, 20, 0x333333, 0x222222));
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(40,40), new THREE.MeshBasicMaterial({visible:false}));
-    ground.rotation.x = -Math.PI/2;
-    scene.add(ground);
-
-    const houseObjects = new THREE.Group();
-    scene.add(houseObjects);
-
-    let previewMesh = new THREE.Mesh(new THREE.PlaneGeometry(GRID, GRID), new THREE.MeshBasicMaterial({color: 0x4a90e2, transparent:true, opacity:0.5, side:THREE.DoubleSide}));
-    previewMesh.rotation.x = -Math.PI/2;
-    previewMesh.visible = false; 
-    scene.add(previewMesh);
-
-    const controls = new OrbitControls(camera, renderer.domElement);
-    camera.position.set(6, 6, 6);
-    controls.enableDamping = true;
-
-    let hoverObj = null, origCol = new THREE.Color();
-
-    // START GAME
-    window.startGame = () => {
-        document.getElementById('intro-screen').style.display = 'none';
-        generateContract();
+    // Game State
+    let mode = 'move';
+    let money = 100;
+    let inventory = { crops: 0 };
+    let camera = { x: 0, y: 0 };
+    
+    const player = {
+        x: (GRID_SIZE * TILE_SIZE) / 2,
+        y: (GRID_SIZE * TILE_SIZE) / 2,
+        targetX: (GRID_SIZE * TILE_SIZE) / 2,
+        targetY: (GRID_SIZE * TILE_SIZE) / 2,
+        color: '#e67e22'
     };
 
-    // CONTRACTS
-    function generateContract() {
-        const A = Math.floor(Math.random() * 2) + 2; 
-        const B = Math.floor(Math.random() * 2) + 2;
-        const C = 1;
-        const D = Math.floor(Math.random() * 2) + 1;
-        const randHex = () => "#" + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0').toUpperCase();
-        
-        contract = { A, B, floorColor: randHex(), wallHeight: 1, wallColor: randHex(), doorCount: C, windowCount: D };
-
-        document.getElementById('spec-container').innerHTML = `
-            <div class="spec-line"><span>Foundation:</span> <b>${A}x${B} | <span class="hex-tag">${contract.floorColor}</span></b></div>
-            <div class="spec-line"><span>Wall:</span> <b>${contract.wallHeight}x | <span class="hex-tag">${contract.wallColor}</span></b></div>
-            <div class="spec-line"><span>Door:</span> <b>${C} (1x)</b></div>
-            <div class="spec-line"><span>Window:</span> <b>${D} total</b></div>
-        `;
-        const ctx = document.getElementById('blueprint-canvas').getContext('2d');
-        ctx.clearRect(0,0,250,80); ctx.strokeStyle = "#4a90e2"; ctx.lineWidth = 2;
-        ctx.strokeRect(125 - (A*15), 40 - (B*15), A*30, B*30);
+    // Initialize Grid
+    const grid = [];
+    for (let y = 0; y < GRID_SIZE; y++) {
+        for (let x = 0; x < GRID_SIZE; x++) {
+            grid.push({
+                x, y,
+                type: 'grass', // grass, dirt, crop, building
+                growth: 0,
+                buildingType: null
+            });
+        }
     }
 
-    window.validateProject = () => {
-        if(currentTool !== 'camera') return;
-        let stats = { floor:0, wall:0, window:0, door:0, floorMatch: true, wallMatch: true };
-        houseObjects.children.forEach(obj => {
-            const hex = "#" + obj.material.color.getHexString().toUpperCase();
-            if(obj.userData.type === 'floor') { stats.floor++; if(hex !== contract.floorColor) stats.floorMatch = false; }
-            if(obj.userData.type === 'wall') { stats.wall++; if(hex !== contract.wallColor) stats.wallMatch = false; }
-            if(obj.userData.type === 'window') stats.window++;
-            if(obj.userData.type === 'door') stats.door++;
+    function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Touch Handling
+    canvas.addEventListener('touchstart', (e) => {
+        const touch = e.touches[0];
+        const rect = canvas.getBoundingClientRect();
+        const touchX = touch.clientX - camera.x;
+        const touchY = touch.clientY - camera.y;
+
+        const gridX = Math.floor(touchX / TILE_SIZE);
+        const gridY = Math.floor(touchY / TILE_SIZE);
+        const tile = grid.find(t => t.x === gridX && t.y === gridY);
+
+        if (!tile) return;
+
+        if (mode === 'move') {
+            player.targetX = (gridX * TILE_SIZE) + TILE_SIZE / 2;
+            player.targetY = (gridY * TILE_SIZE) + TILE_SIZE / 2;
+        } else if (mode === 'plant' && tile.type === 'grass' && money >= 10) {
+            tile.type = 'crop';
+            tile.growth = 0;
+            money -= 10;
+        } else if (mode === 'build' && tile.type === 'grass' && money >= 50) {
+            tile.type = 'building';
+            money -= 50;
+        } else if (tile.type === 'crop' && tile.growth >= 100) {
+            tile.type = 'grass';
+            tile.growth = 0;
+            inventory.crops++;
+            money += 25; // Sell profit
+        }
+        
+        updateUI();
+    });
+
+    function setMode(newMode) {
+        mode = newMode;
+        document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(newMode + '-btn').classList.add('active');
+    }
+
+    function updateUI() {
+        moneyEl.innerText = money;
+        cropsEl.innerText = inventory.crops;
+    }
+
+    // Main Game Loop
+    function update() {
+        // Character Movement
+        const dx = player.targetX - player.x;
+        const dy = player.targetY - player.y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+
+        if (dist > PLAYER_SPEED) {
+            player.x += (dx / dist) * PLAYER_SPEED;
+            player.y += (dy / dist) * PLAYER_SPEED;
+        } else {
+            player.x = player.targetX;
+            player.y = player.targetY;
+        }
+
+        // Camera Follow
+        camera.x = -player.x + canvas.width / 2;
+        camera.y = -player.y + canvas.height / 2;
+
+        // Crop Growth Logic
+        grid.forEach(tile => {
+            if (tile.type === 'crop' && tile.growth < 100) {
+                tile.growth += 0.1; // Slow growth
+            }
         });
-        const win = stats.floor === (contract.A * contract.B) && stats.floorMatch && stats.wall >= 4 && stats.window >= contract.windowCount;
-        const fb = document.getElementById('feedback'); fb.style.display = 'block';
-        if(win) {
-            cash += 2000; xp++; generateContract();
-            fb.innerText = "CONTRACT SIGNED! +$2000"; fb.style.color = "#2ecc71";
-            while(houseObjects.children.length > 0) houseObjects.remove(houseObjects.children[0]);
-        } else {
-            cash -= 100; fb.innerText = "REJECTED!"; fb.style.color = "#ff4444";
-        }
-        document.getElementById('money').innerText = cash; document.getElementById('level').innerText = xp;
-        setTimeout(()=> fb.style.display='none', 2000);
-    };
-
-    // TOOLS
-    window.setTool = (t, btn) => {
-        currentTool = t;
-        document.querySelectorAll('.btn-tool').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        document.getElementById('submit-btn').disabled = (t !== 'camera');
-        const opt = document.getElementById('tool-options');
-        const colGrp = document.getElementById('color-group');
-        
-        if(t === 'camera' || t === 'delete') {
-            controls.enabled = (t === 'camera'); previewMesh.visible = false; opt.classList.remove('visible');
-        } else {
-            controls.enabled = false; previewMesh.visible = true; opt.classList.add('visible');
-            colGrp.style.display = ['floor','wall'].includes(t) ? 'flex' : 'none';
-            if(t === 'window') activeHex = C_WINDOW;
-            else if(t === 'roof') activeHex = C_ROOF;
-            else if(t === 'door') activeHex = C_DOOR;
-            else activeHex = document.getElementById('hex-input').value;
-            scene.remove(previewMesh);
-            if(t === 'floor') {
-                previewMesh = new THREE.Mesh(new THREE.PlaneGeometry(GRID, GRID), new THREE.MeshBasicMaterial({color: activeHex, transparent:true, opacity:0.5, side:THREE.DoubleSide}));
-                previewMesh.rotation.x = -Math.PI/2;
-            } else {
-                previewMesh = new THREE.Mesh(new THREE.BoxGeometry(1,1,1), new THREE.MeshPhongMaterial({color: activeHex, transparent:true, opacity:0.5}));
-            }
-            scene.add(previewMesh);
-        }
-        refreshPreview();
-    };
-
-    window.setLevel = (lv) => {
-        currentLevel = lv;
-        document.querySelectorAll('#height-btns .btn-tool').forEach(b => b.classList.toggle('active', b.id === 'h'+lv));
-        refreshPreview();
-    };
-    window.rotate90 = () => { rot = (rot + 90) % 360; refreshPreview(); };
-    window.updateHex = (v) => { if(/^#[0-9A-F]{6}$/i.test(v)) { activeHex = v; previewMesh.material.color.set(v); } };
-
-    function refreshPreview() {
-        if(!previewMesh || currentTool === 'camera' || currentTool === 'delete') return;
-        previewMesh.material.color.set(activeHex);
-        if(currentTool !== 'floor') {
-            previewMesh.rotation.y = THREE.MathUtils.degToRad(rot);
-            if(currentTool === 'wall') previewMesh.scale.set(GRID, currentLevel * UNIT_H, WALL_T);
-            else if(currentTool === 'door') previewMesh.scale.set(GRID * 0.7, UNIT_H * 0.9, WALL_T * 1.5);
-            else if(currentTool === 'window') previewMesh.scale.set(GRID * 0.7, UNIT_H * 0.4, WALL_T * 1.2);
-            else if(currentTool === 'roof') previewMesh.scale.set(GRID, 0.1, GRID);
-        }
     }
 
-    // INTERACTION
-    window.addEventListener('pointermove', (e) => {
-        if(currentTool === 'camera') return;
-        const mouse = new THREE.Vector2((e.clientX/window.innerWidth)*2-1, -(e.clientY/window.innerHeight)*2+1);
-        const ray = new THREE.Raycaster(); ray.setFromCamera(mouse, camera);
-        if(currentTool === 'delete') {
-            const hits = ray.intersectObjects(houseObjects.children);
-            if(hits.length > 0) {
-                if(hoverObj !== hits[0].object) {
-                    if(hoverObj) hoverObj.material.color.copy(origCol);
-                    hoverObj = hits[0].object; origCol.copy(hoverObj.material.color);
-                    hoverObj.material.color.set(0xff0000);
-                }
-            } else if(hoverObj) { hoverObj.material.color.copy(origCol); hoverObj = null; }
-            return;
-        }
-        const hit = ray.intersectObject(ground);
-        if (hit.length > 0) {
-            const p = hit[0].point;
-            if (currentTool === 'floor' || currentTool === 'roof') {
-                previewMesh.position.set(Math.floor(p.x)+0.5, (currentTool === 'floor' ? 0.01 : currentLevel * UNIT_H), Math.floor(p.z)+0.5);
-            } else {
-                const isV = (rot / 90) % 2 !== 0;
-                let x = isV ? Math.round(p.x) : Math.floor(p.x)+0.5;
-                let z = isV ? Math.floor(p.z)+0.5 : Math.round(p.z);
-                let y, sb = (currentLevel - 1) * UNIT_H;
-                if(currentTool === 'window') y = sb + (UNIT_H/2);
-                else if(currentTool === 'door') y = (UNIT_H*0.9)/2;
-                else y = (currentLevel*UNIT_H)/2;
-                previewMesh.position.set(x, y, z);
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.save();
+        ctx.translate(camera.x, camera.y);
+
+        // Draw Grid
+        grid.forEach(tile => {
+            const tx = tile.x * TILE_SIZE;
+            const ty = tile.y * TILE_SIZE;
+
+            // Draw Base Tile
+            ctx.fillStyle = '#2ecc71'; // Grass
+            ctx.fillRect(tx, ty, TILE_SIZE - 2, TILE_SIZE - 2);
+
+            if (tile.type === 'crop') {
+                ctx.fillStyle = tile.growth >= 100 ? '#f1c40f' : '#27ae60';
+                const size = (tile.growth / 100) * (TILE_SIZE - 20);
+                ctx.fillRect(tx + (TILE_SIZE-size)/2, ty + (TILE_SIZE-size)/2, size, size);
+            } else if (tile.type === 'building') {
+                ctx.fillStyle = '#7f8c8d'; // Building base
+                ctx.fillRect(tx + 5, ty + 5, TILE_SIZE - 10, TILE_SIZE - 10);
+                ctx.fillStyle = '#c0392b'; // Roof
+                ctx.beginPath();
+                ctx.moveTo(tx + 5, ty + 20);
+                ctx.lineTo(tx + TILE_SIZE/2, ty + 5);
+                ctx.lineTo(tx + TILE_SIZE - 5, ty + 20);
+                ctx.fill();
             }
-        }
-    });
+        });
 
-    window.addEventListener('pointerdown', (e) => {
-        if(currentTool === 'camera' || e.target.tagName !== 'CANVAS') return;
-        const mouse = new THREE.Vector2((e.clientX/window.innerWidth)*2-1, -(e.clientY/window.innerHeight)*2+1);
-        const ray = new THREE.Raycaster(); ray.setFromCamera(mouse, camera);
-        if(currentTool === 'delete' && hoverObj) { houseObjects.remove(hoverObj); hoverObj = null; return; }
-        if(currentTool !== 'delete' && currentTool !== 'camera') {
-            let geo = (currentTool === 'floor') ? new THREE.PlaneGeometry(GRID, GRID) : new THREE.BoxGeometry(previewMesh.scale.x, previewMesh.scale.y, previewMesh.scale.z);
-            let mat = (currentTool === 'floor') ? new THREE.MeshBasicMaterial({color: activeHex, side:THREE.DoubleSide}) : new THREE.MeshPhongMaterial({color: activeHex});
-            const m = new THREE.Mesh(geo, mat); m.position.copy(previewMesh.position); m.rotation.copy(previewMesh.rotation);
-            m.userData = { type: currentTool, level: currentLevel }; houseObjects.add(m); cash -= 5;
-            document.getElementById('money').innerText = cash;
-        }
-    });
+        // Draw Player
+        ctx.fillStyle = player.color;
+        ctx.beginPath();
+        ctx.arc(player.x, player.y, 15, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 3;
+        ctx.stroke();
 
-    function animate() { requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); }
-    setTool('camera', document.getElementById('camera-btn')); setLevel(1); animate();
+        ctx.restore();
+
+        update();
+        requestAnimationFrame(draw);
+    }
+
+    draw();
 </script>
 </body>
 </html>
