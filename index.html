@@ -47,6 +47,23 @@
         #hud { position: absolute; top: 20px; width: 100%; display: flex; flex-direction: column; align-items: center; pointer-events: none; z-index: 10; gap: 10px; }
         .stat-box { background: rgba(0,0,0,0.8); padding: 12px 25px; border-radius: 30px; border: 1px solid var(--gold); color: var(--gold); font-weight: bold; display: flex; gap: 25px; font-size: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
         
+        /* User Profile & Logout Styles */
+        #user-profile { position: absolute; top: 20px; right: 20px; z-index: 100; display: flex; flex-direction: column; align-items: flex-end; pointer-events: auto; }
+        .user-icon { 
+            width: 48px; height: 48px; background: var(--brown); border: 2px solid var(--gold); border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center; cursor: pointer; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5); font-size: 22px; color: var(--gold);
+        }
+        #logout-dropdown { 
+            margin-top: 10px; background: rgba(0,0,0,0.9); border: 2px solid var(--gold); 
+            border-radius: 15px; padding: 10px; display: none; box-shadow: 0 10px 20px rgba(0,0,0,0.6);
+        }
+        .btn-logout { 
+            background: var(--red); color: white; border: none; padding: 10px 20px; 
+            border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; 
+        }
+        .btn-logout:active { transform: scale(0.95); }
+
         #xp-bar-container { width: 220px; height: 14px; background: #111; border-radius: 10px; border: 1px solid #444; overflow: hidden; }
         #xp-bar-fill { width: 0%; height: 100%; background: linear-gradient(90deg, #4caf50, #8bc34a); box-shadow: 0 0 10px rgba(76, 175, 80, 0.5); }
 
@@ -90,6 +107,14 @@
     </div>
 
     <div id="game-ui" class="hidden">
+        <!-- User Profile Component -->
+        <div id="user-profile">
+            <div class="user-icon" onclick="toggleUserMenu()">👤</div>
+            <div id="logout-dropdown">
+                <button class="btn-logout" onclick="handleLogout()">LOG OUT</button>
+            </div>
+        </div>
+
         <div id="hud">
             <div class="stat-box">
                 <span>LVL <span id="val-lvl">1</span></span>
@@ -150,92 +175,69 @@
         { id: 'silo', name: 'Grain Silo', price: 2000, req: 10, xp: 1800 }
     ];
 
-    // --- AUTO-LOGIN FIX: MONITOR AUTH STATE ---
+    // --- AUTO-LOGIN FIX ---
     auth.onAuthStateChanged((user) => {
         if (user && !gameStarted) {
-            console.log("Session found for:", user.email);
             startGame(false);
         }
     });
 
     // --- SAVE & LOAD SYSTEM ---
-
     async function saveGameData() {
         const user = auth.currentUser;
         if (!user) return;
-
-        const gridData = grid.map(t => ({
-            t: t.type,
-            g: Math.floor(t.growth),
-            c: t.crop ? t.crop.id : null
-        }));
-
+        const gridData = grid.map(t => ({ t: t.type, g: Math.floor(t.growth), c: t.crop ? t.crop.id : null }));
         try {
-            await db.collection("saves").doc(user.uid).set({
-                money, level, xp, xpNext,
-                grid: gridData,
-                savedAt: Date.now()
-            });
-        } catch (err) {
-            console.error("Save Failed:", err);
-        }
+            await db.collection("saves").doc(user.uid).set({ money, level, xp, xpNext, grid: gridData, savedAt: Date.now() });
+        } catch (err) { console.error("Save Failed:", err); }
     }
 
     async function loadGameData() {
         const user = auth.currentUser;
         if (!user) return false;
-
         document.getElementById('loading-overlay').style.display = 'flex';
         try {
             const doc = await db.collection("saves").doc(user.uid).get();
             if (doc.exists) {
                 const data = doc.data();
-                money = data.money;
-                level = data.level;
-                xp = data.xp;
-                xpNext = data.xpNext || 150;
-                
-                grid = data.grid.map((t, i) => {
-                    let cropObj = null;
-                    if (t.c) cropObj = seeds.find(s => s.id === t.c);
-                    
-                    return {
-                        x: i % 30,
-                        y: Math.floor(i / 30),
-                        type: t.t,
-                        growth: t.g,
-                        crop: cropObj,
-                        grassOffset: Math.random() * 10
-                    };
-                });
+                money = data.money; level = data.level; xp = data.xp; xpNext = data.xpNext || 150;
+                grid = data.grid.map((t, i) => ({
+                    x: i % 30, y: Math.floor(i / 30), type: t.t, growth: t.g,
+                    crop: t.c ? seeds.find(s => s.id === t.c) : null,
+                    grassOffset: Math.random() * 10
+                }));
                 document.getElementById('loading-overlay').style.display = 'none';
                 return true;
             }
-        } catch (err) {
-            console.error("Load Failed:", err);
-        }
+        } catch (err) { console.error("Load Failed:", err); }
         document.getElementById('loading-overlay').style.display = 'none';
         return false;
     }
 
-    // --- AUTHENTICATION ---
+    // --- LOGOUT LOGIC ---
+    function toggleUserMenu() {
+        const menu = document.getElementById('logout-dropdown');
+        menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+    }
 
+    async function handleLogout() {
+        if(confirm("Exit village and log out?")) {
+            try {
+                await auth.signOut();
+                location.reload(); // Refresh to clear state and show intro screen
+            } catch(err) { alert(err.message); }
+        }
+    }
+
+    // --- AUTHENTICATION ---
     async function handleAuth() {
         const e = document.getElementById('email').value, p = document.getElementById('pass').value;
         if(!e || !p) return alert("Enter credentials");
-        
         document.getElementById('auth-btn').innerText = "CONNECTING...";
         try {
-            if(isSignUp) {
-                await auth.createUserWithEmailAndPassword(e, p);
-            } else {
-                await auth.signInWithEmailAndPassword(e, p);
-            }
-            // onAuthStateChanged will trigger startGame
-        } catch(err) { 
-            alert(err.message); 
-            document.getElementById('auth-btn').innerText = "CONTINUE";
-        }
+            if(isSignUp) await auth.createUserWithEmailAndPassword(e, p);
+            else await auth.signInWithEmailAndPassword(e, p);
+        } catch(err) { alert(err.message); document.getElementById('auth-btn').innerText = "CONTINUE"; }
     }
 
     function toggleAuth() { 
@@ -245,39 +247,27 @@
     }
 
     async function startGame(guest) {
-        if (gameStarted) return; // Prevent double initialization
-        
+        if (gameStarted) return;
         document.getElementById('screen-intro').classList.add('hidden');
         document.getElementById('screen-auth').classList.add('hidden');
         document.getElementById('game-ui').classList.remove('hidden');
         resize();
-
         let loaded = false;
-        if (!guest) {
-            loaded = await loadGameData();
-        }
-
+        if (!guest) loaded = await loadGameData();
         if (!loaded) {
             money = 500; level = 1; xp = 0; xpNext = 150;
             grid = Array.from({length: 900}, (_, i) => ({
                 x: i % 30, y: Math.floor(i / 30), type: 'grass', growth: 100, crop: null, grassOffset: Math.random() * 10
             }));
         }
-
         gameStarted = true;
         updateUI();
         requestAnimationFrame(gameLoop);
     }
 
     // --- CORE MECHANICS ---
-
     function updateUI() {
-        if(xp >= xpNext) { 
-            xp -= xpNext; 
-            level++; 
-            xpNext = Math.floor(xpNext * 1.6); 
-            saveGameData(); 
-        }
+        if(xp >= xpNext) { xp -= xpNext; level++; xpNext = Math.floor(xpNext * 1.6); saveGameData(); }
         document.getElementById('val-lvl').innerText = level;
         document.getElementById('val-mon').innerText = money;
         document.getElementById('xp-bar-fill').style.width = (xp/xpNext*100) + "%";
@@ -305,33 +295,24 @@
         const tile = grid[previewPos.gy * 30 + previewPos.gx];
         if(!tile) return;
         let actionTaken = false;
-
         if(selectedItem.mode === 'place') {
             if(money < selectedItem.price) return alert("Not enough money!");
             if(selectedItem.isSeed && tile.type === 'plot') {
-                tile.type = 'crop'; tile.growth = 0; tile.crop = selectedItem; money -= selectedItem.price;
-                actionTaken = true;
+                tile.type = 'crop'; tile.growth = 0; tile.crop = selectedItem; money -= selectedItem.price; actionTaken = true;
             } else if(!selectedItem.isSeed && tile.type === 'grass') {
-                tile.type = selectedItem.id; money -= selectedItem.price; xp += selectedItem.xp;
-                actionTaken = true;
+                tile.type = selectedItem.id; money -= selectedItem.price; xp += selectedItem.xp; actionTaken = true;
             }
         } else if(selectedItem.mode === 'harvest' && tile.type === 'crop' && tile.growth >= 100) {
             money += tile.crop.sale; xp += 15;
             if(tile.crop.tree) tile.growth = 0; else { tile.type = 'plot'; tile.crop = null; }
             actionTaken = true;
         } else if(selectedItem.mode === 'destroy' && tile.type !== 'grass') {
-            tile.type = 'grass'; tile.crop = null;
-            actionTaken = true;
+            tile.type = 'grass'; tile.crop = null; actionTaken = true;
         }
-
-        if(actionTaken) {
-            updateUI();
-            saveGameData(); 
-        }
+        if(actionTaken) { updateUI(); saveGameData(); }
     }
 
     // --- VISUAL ENGINE ---
-
     const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
     function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
     window.addEventListener('resize', resize);
@@ -342,7 +323,7 @@
         const gx = Math.floor(wx/80), gy = Math.floor(wy/80);
         if(gx < 0 || gx >= 30 || gy < 0 || gy >= 30) return;
         if(selectedItem) { previewPos = { gx, gy }; }
-        else { player.tx = wx; player.ty = wy; }
+        else { player.tx = wx; player.ty = wy; document.getElementById('logout-dropdown').style.display = 'none'; }
     });
 
     function drawHouse(x, y) {
@@ -444,19 +425,14 @@
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.save(); ctx.translate(camera.x, camera.y);
         const wind = Math.sin(frame * 0.04) * 5;
-
         grid.forEach(t => {
             const tx = t.x*80, ty = t.y*80;
             if (tx + 80 < -camera.x || tx > -camera.x + canvas.width || ty + 80 < -camera.y || ty > -camera.y + canvas.height) return;
-            
             ctx.fillStyle = (t.x + t.y) % 2 === 0 ? "#1b5e20" : "#1e6d23";
             ctx.fillRect(tx, ty, 80, 80);
-
-            if(t.type === 'path') { 
-                ctx.fillStyle = ROAD_COLOR; ctx.fillRect(tx, ty, 80, 80);
-            } else if(t.type === 'plot') { 
-                ctx.fillStyle = '#3e2723'; ctx.fillRect(tx+4, ty+4, 72, 72);
-            } else if(t.type === 'crop') {
+            if(t.type === 'path') { ctx.fillStyle = ROAD_COLOR; ctx.fillRect(tx, ty, 80, 80); }
+            else if(t.type === 'plot') { ctx.fillStyle = '#3e2723'; ctx.fillRect(tx+4, ty+4, 72, 72); }
+            else if(t.type === 'crop') {
                 ctx.fillStyle = '#3e2723'; ctx.fillRect(tx+4, ty+4, 72, 72);
                 if(t.crop.id === 'wheat') drawWheat(tx, ty, t.growth, wind);
                 else if(t.crop.id === 'corn') drawCorn(tx, ty, t.growth, wind);
@@ -470,12 +446,10 @@
             else if(t.type === 'watertower') { ctx.fillStyle="#78909c"; ctx.fillRect(tx+25, ty+20, 30, 40); }
             else if(t.type === 'silo') { ctx.fillStyle="#90a4ae"; ctx.fillRect(tx+20, ty+10, 40, 60); }
         });
-
         if(selectedItem) {
             ctx.strokeStyle = "rgba(255,255,255,0.5)"; ctx.setLineDash([5, 5]);
             ctx.strokeRect(previewPos.gx*80+2, previewPos.gy*80+2, 76, 76); ctx.setLineDash([]);
         }
-
         drawFarmer(player.x, player.y);
         ctx.restore();
     }
