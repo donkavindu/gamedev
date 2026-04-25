@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Village Architect: Ultra Realism</title>
+    <title>RURAL FARMER</title>
     
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -21,6 +21,7 @@
         * { box-sizing: border-box; -webkit-user-select: none; user-select: none; touch-action: none; }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; position: fixed; font-family: 'Segoe UI', sans-serif; }
         
+        /* Screens */
         .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; background: var(--green); color: white; transition: opacity 0.5s; }
         .hidden { display: none !important; }
 
@@ -38,6 +39,21 @@
         }
         .btn-green { background: #2e7d32; }
         .btn-brown { background: #5d4037; }
+        .btn-red { background: var(--red); }
+
+        /* Custom Popup/Modal */
+        #game-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 10000;
+            display: none; align-items: center; justify-content: center;
+        }
+        .modal-content {
+            background: var(--parchment); border: 5px solid var(--brown);
+            border-radius: 20px; padding: 25px; width: 85%; max-width: 350px;
+            text-align: center; color: var(--brown); box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .modal-content h3 { margin-top: 0; color: var(--red); }
+        .modal-btns { display: flex; gap: 10px; margin-top: 20px; }
 
         .input-field {
             width: 100%; padding: 12px; margin: 10px 0; border-radius: 10px; border: 1px solid var(--gold);
@@ -47,7 +63,6 @@
         #hud { position: absolute; top: 20px; width: 100%; display: flex; flex-direction: column; align-items: center; pointer-events: none; z-index: 10; gap: 10px; }
         .stat-box { background: rgba(0,0,0,0.8); padding: 12px 25px; border-radius: 30px; border: 1px solid var(--gold); color: var(--gold); font-weight: bold; display: flex; gap: 25px; font-size: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
         
-        /* User Profile & Logout Styles */
         #user-profile { position: absolute; top: 20px; right: 20px; z-index: 100; display: flex; flex-direction: column; align-items: flex-end; pointer-events: auto; }
         .user-icon { 
             width: 48px; height: 48px; background: var(--brown); border: 2px solid var(--gold); border-radius: 50%; 
@@ -58,17 +73,26 @@
             margin-top: 10px; background: rgba(0,0,0,0.9); border: 2px solid var(--gold); 
             border-radius: 15px; padding: 10px; display: none; box-shadow: 0 10px 20px rgba(0,0,0,0.6);
         }
-        .btn-logout { 
-            background: var(--red); color: white; border: none; padding: 10px 20px; 
-            border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; 
-        }
-        .btn-logout:active { transform: scale(0.95); }
 
         #xp-bar-container { width: 220px; height: 14px; background: #111; border-radius: 10px; border: 1px solid #444; overflow: hidden; }
         #xp-bar-fill { width: 0%; height: 100%; background: linear-gradient(90deg, #4caf50, #8bc34a); box-shadow: 0 0 10px rgba(76, 175, 80, 0.5); }
 
         #controls { position: absolute; bottom: 30px; width: 100%; display: flex; justify-content: center; gap: 15px; z-index: 10; }
-        .ctrl-btn { width: 75px; height: 75px; border-radius: 22px; border: 2px solid rgba(255,255,255,0.4); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        .ctrl-btn { 
+            width: 75px; height: 75px; border-radius: 22px; border: 2px solid rgba(255,255,255,0.4); 
+            color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            font-size: 10px; font-weight: bold; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5); transition: all 0.3s ease;
+        }
+        
+        /* Highlight Class */
+        .ctrl-btn.active {
+            background: var(--gold);
+            color: var(--brown);
+            border-color: white;
+            transform: scale(1.1);
+            box-shadow: 0 0 20px var(--gold);
+        }
 
         .full-menu { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.96); z-index: 2000; display: none; flex-direction: column; align-items: center; padding: 40px 20px; overflow-y: auto; }
         .grid-view { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; width: 100%; max-width: 420px; }
@@ -80,7 +104,6 @@
         .conf-btn { width: 70px; height: 70px; border-radius: 50%; border: 4px solid white; color: white; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
 
         #gameCanvas { display: block; background: #1b5e20; }
-        
         #loading-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; display:none; justify-content:center; align-items:center; color:white; font-weight:bold; }
     </style>
 </head>
@@ -88,30 +111,41 @@
 
     <div id="loading-overlay">SYNCING WITH CLOUD...</div>
 
+    <!-- CUSTOM POPUP MODAL -->
+    <div id="game-modal">
+        <div class="modal-content">
+            <h3 id="modal-title">Notice</h3>
+            <p id="modal-msg">Message goes here...</p>
+            <div class="modal-btns">
+                <button class="btn-game btn-brown" id="modal-cancel" style="display:none">CANCEL</button>
+                <button class="btn-game btn-green" id="modal-ok">OK</button>
+            </div>
+        </div>
+    </div>
+
     <div id="screen-intro" class="screen">
         <div class="panel">
-            <h1>RURAL<br>ARCHITECT</h1>
-            <button class="btn-game btn-green" onclick="showAuth()">START PROJECT</button>
-            <button class="btn-game btn-brown" onclick="startGame(true)">GUEST ARCHITECT</button>
+            <h1>RURAL<br>FARMER</h1>
+            <button class="btn-game btn-green" onclick="showAuth()">START GAME</button>
+            <button class="btn-game btn-brown" onclick="startGame(true)">START AS A GUEST</button>
         </div>
     </div>
 
     <div id="screen-auth" class="screen hidden">
         <div class="panel">
-            <h2 id="auth-title" style="color:var(--gold)">Identity</h2>
+            <h2 id="auth-title" style="color:var(--gold)">Login to Game</h2>
             <input type="email" id="email" class="input-field" placeholder="Email Address">
             <input type="password" id="pass" class="input-field" placeholder="Password">
             <button class="btn-game btn-green" id="auth-btn" onclick="handleAuth()">CONTINUE</button>
-            <button style="background:none; border:none; color:white; text-decoration:underline; cursor:pointer;" onclick="toggleAuth()" id="auth-toggle">New? Sign Up</button>
+            <button style="background:none; border:none; color:white; text-decoration:underline; cursor:pointer;" onclick="toggleAuth()" id="auth-toggle">New Player? Sign Up</button>
         </div>
     </div>
 
     <div id="game-ui" class="hidden">
-        <!-- User Profile Component -->
         <div id="user-profile">
             <div class="user-icon" onclick="toggleUserMenu()">👤</div>
             <div id="logout-dropdown">
-                <button class="btn-logout" onclick="handleLogout()">LOG OUT</button>
+                <button class="btn-game btn-red" style="font-size:12px; padding:10px" onclick="handleLogout()">LOG OUT</button>
             </div>
         </div>
 
@@ -122,18 +156,22 @@
             </div>
             <div id="xp-bar-container"><div id="xp-bar-fill"></div></div>
         </div>
+
         <div id="confirm-bar">
             <div class="conf-btn" style="background:var(--red)" onclick="cancelAction()">✕</div>
             <div class="conf-btn" style="background:#4caf50" onclick="confirmAction()">✓</div>
         </div>
+
         <div id="menu-seed" class="full-menu"><h2>NATURE CATALOG</h2><div id="grid-seed" class="grid-view"></div><br><button class="btn-game btn-brown" style="width:200px" onclick="closeMenus()">BACK</button></div>
         <div id="menu-build" class="full-menu"><h2>ARCHITECTURE</h2><div id="grid-build" class="grid-view"></div><br><button class="btn-game btn-brown" style="width:200px" onclick="closeMenus()">BACK</button></div>
+        
         <canvas id="gameCanvas"></canvas>
+        
         <div id="controls">
-            <div class="ctrl-btn" onclick="openCatalog('seed')">PLANT</div>
-            <div class="ctrl-btn" onclick="setMode('harvest')">HARVEST</div>
-            <div class="ctrl-btn" onclick="openCatalog('build')">BUILD</div>
-            <div class="ctrl-btn" onclick="setMode('destroy')">REMOVE</div>
+            <div class="ctrl-btn" id="btn-plant" onclick="openCatalog('seed')">PLANT</div>
+            <div class="ctrl-btn" id="btn-harvest" onclick="setMode('harvest')">HARVEST</div>
+            <div class="ctrl-btn" id="btn-build" onclick="openCatalog('build')">BUILD</div>
+            <div class="ctrl-btn" id="btn-destroy" onclick="setMode('destroy')">REMOVE</div>
         </div>
     </div>
 
@@ -175,20 +213,31 @@
         { id: 'silo', name: 'Grain Silo', price: 2000, req: 10, xp: 1800 }
     ];
 
-    // --- AUTO-LOGIN FIX ---
-    auth.onAuthStateChanged((user) => {
-        if (user && !gameStarted) {
-            startGame(false);
-        }
-    });
+    // --- POPUP SYSTEM ---
+    function openPopup(title, msg, onOk = null, onCancel = null) {
+        const modal = document.getElementById('game-modal');
+        const okBtn = document.getElementById('modal-ok');
+        const cancelBtn = document.getElementById('modal-cancel');
+        
+        document.getElementById('modal-title').innerText = title;
+        document.getElementById('modal-msg').innerText = msg;
+        
+        modal.style.display = 'flex';
+        cancelBtn.style.display = onCancel ? 'block' : 'none';
+
+        okBtn.onclick = () => { modal.style.display = 'none'; if(onOk) onOk(); };
+        cancelBtn.onclick = () => { modal.style.display = 'none'; if(onCancel) onCancel(); };
+    }
+
+    // --- AUTO-LOGIN ---
+    auth.onAuthStateChanged((user) => { if (user && !gameStarted) startGame(false); });
 
     // --- SAVE & LOAD SYSTEM ---
     async function saveGameData() {
         const user = auth.currentUser;
         if (!user) return;
         const gridData = grid.map(t => ({ t: t.type, g: Math.floor(t.growth), c: t.crop ? t.crop.id : null }));
-        try {
-            await db.collection("saves").doc(user.uid).set({ money, level, xp, xpNext, grid: gridData, savedAt: Date.now() });
+        try { await db.collection("saves").doc(user.uid).set({ money, level, xp, xpNext, grid: gridData, savedAt: Date.now() });
         } catch (err) { console.error("Save Failed:", err); }
     }
 
@@ -203,8 +252,7 @@
                 money = data.money; level = data.level; xp = data.xp; xpNext = data.xpNext || 150;
                 grid = data.grid.map((t, i) => ({
                     x: i % 30, y: Math.floor(i / 30), type: t.t, growth: t.g,
-                    crop: t.c ? seeds.find(s => s.id === t.c) : null,
-                    grassOffset: Math.random() * 10
+                    crop: t.c ? seeds.find(s => s.id === t.c) : null, grassOffset: Math.random() * 10
                 }));
                 document.getElementById('loading-overlay').style.display = 'none';
                 return true;
@@ -214,6 +262,17 @@
         return false;
     }
 
+    // --- HIGHLIGHT LOGIC ---
+    function clearHighlights() {
+        document.querySelectorAll('.ctrl-btn').forEach(btn => btn.classList.remove('active'));
+    }
+
+    function applyHighlight(id) {
+        clearHighlights();
+        const btn = document.getElementById('btn-' + id);
+        if(btn) btn.classList.add('active');
+    }
+
     // --- LOGOUT LOGIC ---
     function toggleUserMenu() {
         const menu = document.getElementById('logout-dropdown');
@@ -221,28 +280,29 @@
     }
 
     async function handleLogout() {
-        if(confirm("Exit village and log out?")) {
-            try {
-                await auth.signOut();
-                location.reload(); // Refresh to clear state and show intro screen
-            } catch(err) { alert(err.message); }
-        }
+        openPopup("LOGOUT", "Exit village and log out?", async () => {
+            try { await auth.signOut(); location.reload(); } 
+            catch(err) { openPopup("Error", err.message); }
+        }, () => {});
     }
 
     // --- AUTHENTICATION ---
     async function handleAuth() {
         const e = document.getElementById('email').value, p = document.getElementById('pass').value;
-        if(!e || !p) return alert("Enter credentials");
+        if(!e || !p) return openPopup("Missing Info", "Please enter credentials");
         document.getElementById('auth-btn').innerText = "CONNECTING...";
         try {
             if(isSignUp) await auth.createUserWithEmailAndPassword(e, p);
             else await auth.signInWithEmailAndPassword(e, p);
-        } catch(err) { alert(err.message); document.getElementById('auth-btn').innerText = "CONTINUE"; }
+        } catch(err) { 
+            openPopup("Auth Error", err.message); 
+            document.getElementById('auth-btn').innerText = "CONTINUE"; 
+        }
     }
 
     function toggleAuth() { 
         isSignUp = !isSignUp; 
-        document.getElementById('auth-title').innerText = isSignUp ? "Identity (Sign Up)" : "Identity (Login)"; 
+        document.getElementById('auth-title').innerText = isSignUp ? "Sign Up to Game" : "Login to Game"; 
         document.getElementById('auth-toggle').innerText = isSignUp ? "Already a member? Login" : "New? Sign Up";
     }
 
@@ -267,13 +327,14 @@
 
     // --- CORE MECHANICS ---
     function updateUI() {
-        if(xp >= xpNext) { xp -= xpNext; level++; xpNext = Math.floor(xpNext * 1.6); saveGameData(); }
+        if(xp >= xpNext) { xp -= xpNext; level++; xpNext = Math.floor(xpNext * 1.6); saveGameData(); openPopup("LEVEL UP", "Welcome to Level " + level + "!"); }
         document.getElementById('val-lvl').innerText = level;
         document.getElementById('val-mon').innerText = money;
         document.getElementById('xp-bar-fill').style.width = (xp/xpNext*100) + "%";
     }
 
     function openCatalog(type) {
+        applyHighlight(type === 'seed' ? 'plant' : 'build'); // Highlight while menu is open
         const container = document.getElementById('grid-' + type);
         container.innerHTML = '';
         (type === 'seed' ? seeds : builds).forEach(item => {
@@ -281,35 +342,95 @@
             const card = document.createElement('div');
             card.className = `card ${isLocked ? 'locked' : ''}`;
             card.innerHTML = `${isLocked ? '<div class="lock-tag">Lvl '+item.req+'</div>' : ''}${item.name}<br><span style="color:#555">$${item.price}</span>`;
-            if(!isLocked) card.onclick = () => { closeMenus(); selectedItem = {...item, isSeed: type === 'seed', mode: 'place'}; document.getElementById('confirm-bar').style.display = 'flex'; };
+            if(!isLocked) card.onclick = () => { 
+                closeMenus(); 
+                selectedItem = {...item, isSeed: type === 'seed', mode: 'place', category: type}; 
+                document.getElementById('confirm-bar').style.display = 'flex'; 
+                // Maintain highlight after picking item
+                applyHighlight(type === 'seed' ? 'plant' : 'build');
+            };
             container.appendChild(card);
         });
         document.getElementById('menu-' + type).style.display = 'flex';
     }
 
-    function closeMenus() { document.querySelectorAll('.full-menu').forEach(m => m.style.display = 'none'); }
-    function setMode(m) { selectedItem = { mode: m }; document.getElementById('confirm-bar').style.display = 'flex'; }
-    function cancelAction() { selectedItem = null; document.getElementById('confirm-bar').style.display = 'none'; }
+    function closeMenus() { 
+        document.querySelectorAll('.full-menu').forEach(m => m.style.display = 'none');
+        // If no item was selected after closing menu, clear highlight
+        if(!selectedItem) clearHighlights();
+    }
+
+    function setMode(m) { 
+        applyHighlight(m);
+        selectedItem = { mode: m }; 
+        document.getElementById('confirm-bar').style.display = 'flex'; 
+    }
+
+    function cancelAction() { 
+        selectedItem = null; 
+        document.getElementById('confirm-bar').style.display = 'none'; 
+        clearHighlights();
+    }
 
     function confirmAction() {
         const tile = grid[previewPos.gy * 30 + previewPos.gx];
         if(!tile) return;
         let actionTaken = false;
+
         if(selectedItem.mode === 'place') {
-            if(money < selectedItem.price) return alert("Not enough money!");
-            if(selectedItem.isSeed && tile.type === 'plot') {
-                tile.type = 'crop'; tile.growth = 0; tile.crop = selectedItem; money -= selectedItem.price; actionTaken = true;
-            } else if(!selectedItem.isSeed && tile.type === 'grass') {
-                tile.type = selectedItem.id; money -= selectedItem.price; xp += selectedItem.xp; actionTaken = true;
+            if(money < selectedItem.price) { 
+                openPopup("Bankrupt", "You don't have enough money for this!"); 
+                return; 
             }
-        } else if(selectedItem.mode === 'harvest' && tile.type === 'crop' && tile.growth >= 100) {
-            money += tile.crop.sale; xp += 15;
-            if(tile.crop.tree) tile.growth = 0; else { tile.type = 'plot'; tile.crop = null; }
-            actionTaken = true;
-        } else if(selectedItem.mode === 'destroy' && tile.type !== 'grass') {
-            tile.type = 'grass'; tile.crop = null; actionTaken = true;
+
+            if(selectedItem.isSeed) {
+                if(tile.type === 'plot') {
+                    tile.type = 'crop'; tile.growth = 0; tile.crop = selectedItem; money -= selectedItem.price; actionTaken = true;
+                } else {
+                    openPopup("Invalid Action", "Crops can only be planted on Farm Plots!");
+                    return;
+                }
+            } else {
+                if(tile.type === 'grass') {
+                    tile.type = selectedItem.id; money -= selectedItem.price; xp += selectedItem.xp; actionTaken = true;
+                } else {
+                    openPopup("Invalid Action", "You can only build on clear grass terrain!");
+                    return;
+                }
+            }
+        } 
+        else if(selectedItem.mode === 'harvest') {
+            if(tile.type === 'crop') {
+                if(tile.growth >= 100) {
+                    money += tile.crop.sale; xp += 15;
+                    if(tile.crop.tree) tile.growth = 0; else { tile.type = 'plot'; tile.crop = null; }
+                    actionTaken = true;
+                } else {
+                    openPopup("Not Ready", "This crop hasn't finished growing yet!");
+                    return;
+                }
+            } else {
+                openPopup("Nothing to Harvest", "There is no mature crop at this location.");
+                return;
+            }
+        } 
+        else if(selectedItem.mode === 'destroy') {
+            if(tile.type !== 'grass') {
+                tile.type = 'grass'; tile.crop = null; actionTaken = true;
+            } else {
+                openPopup("Already Empty", "This spot is already natural grass.");
+                return;
+            }
         }
-        if(actionTaken) { updateUI(); saveGameData(); }
+
+        if(actionTaken) { 
+            updateUI(); 
+            saveGameData(); 
+            // Clear highlights after action is complete
+            selectedItem = null;
+            document.getElementById('confirm-bar').style.display = 'none';
+            clearHighlights();
+        }
     }
 
     // --- VISUAL ENGINE ---
@@ -326,6 +447,7 @@
         else { player.tx = wx; player.ty = wy; document.getElementById('logout-dropdown').style.display = 'none'; }
     });
 
+    // --- DRAWING FUNCTIONS ---
     function drawHouse(x, y) {
         ctx.fillStyle = "rgba(100,100,100,0.4)";
         for(let i=0; i<3; i++) {
@@ -421,6 +543,7 @@
         ctx.restore();
     }
 
+    // --- GAME RENDERING ---
     function drawGame() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.save(); ctx.translate(camera.x, camera.y);
