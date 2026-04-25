@@ -2,35 +2,104 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mobile Farm Builder</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Village Architect Pro</title>
     <style>
-        body { margin: 0; padding: 0; background: #2c3e50; overflow: hidden; font-family: sans-serif; }
-        canvas { display: block; touch-action: none; }
-        #ui {
-            position: absolute; bottom: 20px; left: 0; right: 0;
-            display: flex; justify-content: center; gap: 10px; pointer-events: none;
+        * { box-sizing: border-box; -webkit-user-select: none; user-select: none; touch-action: none; }
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow: hidden; background: #1e3d1a; 
+            position: fixed; font-family: 'Segoe UI', sans-serif;
+        }
+        canvas { display: block; width: 100vw; height: 100vh; z-index: 1; }
+
+        /* HUD */
+        #hud {
+            position: absolute; top: env(safe-area-inset-top, 10px);
+            width: 100%; display: flex; justify-content: center; gap: 15px;
+            pointer-events: none; z-index: 10;
+        }
+        .stat {
+            background: rgba(45, 20, 10, 0.92); color: #f1c40f; padding: 10px 20px;
+            border-radius: 25px; border: 2px solid #8b4513; font-weight: bold;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.4); font-size: 18px;
+        }
+
+        /* Build Menu */
+        #build-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.92); z-index: 100;
+            display: none; flex-direction: column; align-items: center;
+            padding: 40px 20px; color: white;
+        }
+        #build-screen.active { display: flex; }
+        #build-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr);
+            gap: 12px; width: 100%; max-width: 500px; 
+            overflow-y: auto; padding: 10px;
+        }
+        .building-card {
+            background: #f5deb3; border-radius: 12px; padding: 10px;
+            display: flex; flex-direction: column; align-items: center;
+            border: 3px solid #8b4513; color: #333;
+        }
+        .building-card .icon { font-size: 32px; }
+        .building-card .name { font-size: 10px; font-weight: bold; margin-top: 4px; text-align: center; }
+        .building-card .price { color: #27ae60; font-weight: bold; font-size: 12px; }
+
+        /* Placement Buttons */
+        #confirm-layer {
+            position: absolute; bottom: 120px; width: 100%;
+            display: none; justify-content: center; gap: 40px; z-index: 50;
+        }
+        .action-circle {
+            width: 75px; height: 75px; border-radius: 50%; border: 4px solid white;
+            display: flex; align-items: center; justify-content: center; font-size: 35px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+        }
+        .btn-confirm { background: #2ecc71; }
+        .btn-cancel { background: #e74c3c; }
+
+        /* Controls */
+        #controls {
+            position: absolute; bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
+            width: 100%; display: flex; justify-content: center; gap: 12px;
+            z-index: 10;
         }
         .btn {
-            background: #f1c40f; border: 4px solid #d35400; border-radius: 12px;
-            padding: 15px; font-weight: bold; font-size: 14px; color: #d35400;
-            pointer-events: auto; box-shadow: 0 4px 0 #a04000; active-transform: translateY(2px);
+            width: 75px; height: 75px; border-radius: 50%; border: 4px solid #fff;
+            color: white; display: flex; flex-direction: column; align-items: center; 
+            justify-content: center; font-size: 13px; font-weight: bold;
+            box-shadow: 0 5px 0 rgba(0,0,0,0.3);
         }
-        .btn.active { background: #fff; border-color: #27ae60; color: #27ae60; }
-        #stats {
-            position: absolute; top: 10px; left: 10px; color: white;
-            background: rgba(0,0,0,0.5); padding: 10px; border-radius: 8px; pointer-events: none;
-        }
+        .btn-p { background: #2ecc71; }
+        .btn-h { background: #f1c40f; color: #8b4513; }
+        .btn-b { background: #8b4513; }
+        .btn-stop { background: #e74c3c !important; border-radius: 15px !important; }
     </style>
 </head>
 <body>
 
-    <div id="stats">💰 <span id="money">100</span> | 🌾 <span id="crops">0</span></div>
+    <div id="hud">
+        <div class="stat">💰 $<span id="m-val">500</span></div>
+        <div class="stat">📦 <span id="i-val">0</span></div>
+    </div>
 
-    <div id="ui">
-        <div id="move-btn" class="btn active" onclick="setMode('move')">🚶 MOVE</div>
-        <div id="plant-btn" class="btn" onclick="setMode('plant')">🌱 PLANT ($10)</div>
-        <div id="build-btn" class="btn" onclick="setMode('build')">🏠 BUILD ($50)</div>
+    <div id="confirm-layer">
+        <div class="action-circle btn-cancel" onclick="cancelPlacement()">✕</div>
+        <div class="action-circle btn-confirm" onclick="confirmPlacement()">✓</div>
+    </div>
+
+    <div id="build-screen">
+        <h2 style="color: #f1c40f; margin-bottom: 10px;">Village Market</h2>
+        <div id="build-grid"></div>
+        <button style="margin-top:20px; padding:12px 30px; background:#666; border:none; color:white; border-radius:20px;" onclick="closeBuildMenu()">CLOSE</button>
+    </div>
+
+    <div id="controls">
+        <div class="btn btn-p" onclick="act('plant')">🌱<span>Sow</span></div>
+        <div class="btn btn-h" onclick="act('harvest')">🧺<span>Pick</span></div>
+        <div class="btn btn-b" id="build-btn" onclick="openBuildMenu()">🏗️<span>Build</span></div>
     </div>
 
     <canvas id="gameCanvas"></canvas>
@@ -38,166 +107,221 @@
 <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
-    const moneyEl = document.getElementById('money');
-    const cropsEl = document.getElementById('crops');
 
-    // Game Constants
-    const TILE_SIZE = 60;
-    const GRID_SIZE = 15; // 15x15 map
-    const PLAYER_SPEED = 4;
-
-    // Game State
-    let mode = 'move';
-    let money = 100;
-    let inventory = { crops: 0 };
-    let camera = { x: 0, y: 0 };
+    const TILE_SIZE = 80;
+    const GRID_SIZE = 30; 
+    const WORLD_SIZE = TILE_SIZE * GRID_SIZE;
     
-    const player = {
-        x: (GRID_SIZE * TILE_SIZE) / 2,
-        y: (GRID_SIZE * TILE_SIZE) / 2,
-        targetX: (GRID_SIZE * TILE_SIZE) / 2,
-        targetY: (GRID_SIZE * TILE_SIZE) / 2,
-        color: '#e67e22'
+    let money = 500;
+    let inv = 0;
+    let camera = { x: 0, y: 0 };
+    let isPathMode = false;
+    let selectedItem = null;
+    let previewPos = null;
+    
+    // Farmer settings
+    const player = { 
+        x: WORLD_SIZE/2, y: WORLD_SIZE/2, 
+        tx: WORLD_SIZE/2, ty: WORLD_SIZE/2, 
+        gx: 0, gy: 0, 
+        speed: 5,
+        colSize: 15 // Collision radius
     };
 
-    // Initialize Grid
-    const grid = [];
-    for (let y = 0; y < GRID_SIZE; y++) {
-        for (let x = 0; x < GRID_SIZE; x++) {
-            grid.push({
-                x, y,
-                type: 'grass', // grass, dirt, crop, building
-                growth: 0,
-                buildingType: null
-            });
-        }
-    }
+    const buildings = [
+        { id: 'path', name: 'Dirt Path', price: 2, icon: '👣' },
+        { id: 'house', name: 'Farmhouse', price: 50, icon: '🏡' },
+        { id: 'barn', name: 'Barn', price: 150, icon: '🏚️' },
+        { id: 'windmill', name: 'Windmill', price: 200, icon: '🎡' },
+        { id: 'well', name: 'Well', price: 40, icon: '⛲' },
+        { id: 'coop', name: 'Coop', price: 80, icon: '🛖' },
+        { id: 'silo', name: 'Silo', price: 120, icon: '🗼' },
+        { id: 'green', name: 'Greenhouse', price: 300, icon: '🏠' },
+        { id: 'shed', name: 'Shed', price: 30, icon: '🏚' },
+        { id: 'tower', name: 'Water Tower', price: 250, icon: '🏗️' },
+        { id: 'apiary', name: 'Apiary', price: 90, icon: '🐝' },
+        { id: 'orchard', name: 'Orchard', price: 60, icon: '🌳' },
+        { id: 'vine', name: 'Vineyard', price: 100, icon: '🍇' },
+        { id: 'fountain', name: 'Fountain', price: 500, icon: '⛲' },
+        { id: 'statue', name: 'Statue', price: 1000, icon: '🗿' }
+    ];
 
-    function resize() {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-    }
+    const grid = Array.from({length: GRID_SIZE * GRID_SIZE}, (_, i) => ({
+        x: i % GRID_SIZE, y: Math.floor(i / GRID_SIZE),
+        type: 'grass', growth: 0, icon: '',
+        color: (Math.floor(i / GRID_SIZE) + (i % GRID_SIZE)) % 2 === 0 ? '#4eb351' : '#45a848'
+    }));
 
+    const buildGrid = document.getElementById('build-grid');
+    buildings.forEach(b => {
+        const card = document.createElement('div');
+        card.className = 'building-card';
+        card.innerHTML = `<div class="icon">${b.icon}</div><div class="name">${b.name}</div><div class="price">$${b.price}</div>`;
+        card.onclick = () => {
+            closeBuildMenu();
+            if(b.id === 'path') startPathMode();
+            else {
+                selectedItem = b;
+                document.getElementById('confirm-layer').style.display = 'flex';
+                previewPos = {gx: player.gx, gy: player.gy};
+            }
+        };
+        buildGrid.appendChild(card);
+    });
+
+    function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
     window.addEventListener('resize', resize);
     resize();
 
-    // Touch Handling
     canvas.addEventListener('touchstart', (e) => {
-        const touch = e.touches[0];
-        const rect = canvas.getBoundingClientRect();
-        const touchX = touch.clientX - camera.x;
-        const touchY = touch.clientY - camera.y;
+        const t = e.touches[0];
+        const wx = t.clientX - camera.x;
+        const wy = t.clientY - camera.y;
+        const gx = Math.floor(wx / TILE_SIZE);
+        const gy = Math.floor(wy / TILE_SIZE);
 
-        const gridX = Math.floor(touchX / TILE_SIZE);
-        const gridY = Math.floor(touchY / TILE_SIZE);
-        const tile = grid.find(t => t.x === gridX && t.y === gridY);
-
-        if (!tile) return;
-
-        if (mode === 'move') {
-            player.targetX = (gridX * TILE_SIZE) + TILE_SIZE / 2;
-            player.targetY = (gridY * TILE_SIZE) + TILE_SIZE / 2;
-        } else if (mode === 'plant' && tile.type === 'grass' && money >= 10) {
-            tile.type = 'crop';
-            tile.growth = 0;
-            money -= 10;
-        } else if (mode === 'build' && tile.type === 'grass' && money >= 50) {
-            tile.type = 'building';
-            money -= 50;
-        } else if (tile.type === 'crop' && tile.growth >= 100) {
-            tile.type = 'grass';
-            tile.growth = 0;
-            inventory.crops++;
-            money += 25; // Sell profit
+        if (selectedItem) {
+            previewPos = { gx, gy };
+        } else {
+            // Only walk to destination if it's not a building
+            const targetTile = getTileAt(gx, gy);
+            player.tx = Math.max(30, Math.min(wx, WORLD_SIZE - 30));
+            player.ty = Math.max(30, Math.min(wy, WORLD_SIZE - 30));
         }
-        
-        updateUI();
     });
 
-    function setMode(newMode) {
-        mode = newMode;
-        document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
-        document.getElementById(newMode + '-btn').classList.add('active');
+    function getTileAt(gx, gy) {
+        if(gx < 0 || gx >= GRID_SIZE || gy < 0 || gy >= GRID_SIZE) return null;
+        return grid[gy * GRID_SIZE + gx];
+    }
+
+    function isWalkable(wx, wy) {
+        const gx = Math.floor(wx / TILE_SIZE);
+        const gy = Math.floor(wy / TILE_SIZE);
+        const tile = getTileAt(gx, gy);
+        if(!tile) return false;
+        // Block player if tile is a building
+        return tile.type !== 'building';
+    }
+
+    function cancelPlacement() {
+        selectedItem = null;
+        previewPos = null;
+        document.getElementById('confirm-layer').style.display = 'none';
+    }
+
+    function confirmPlacement() {
+        if (!previewPos || !selectedItem) return;
+        const tile = getTileAt(previewPos.gx, previewPos.gy);
+        // Only place on empty grass
+        if (tile && tile.type === 'grass' && money >= selectedItem.price) {
+            tile.type = 'building';
+            tile.icon = selectedItem.icon;
+            money -= selectedItem.price;
+            updateUI();
+            cancelPlacement();
+        }
+    }
+
+    function openBuildMenu() { if(isPathMode) stopPathMode(); else document.getElementById('build-screen').classList.add('active'); }
+    function closeBuildMenu() { document.getElementById('build-screen').classList.remove('active'); }
+
+    function startPathMode() {
+        isPathMode = true;
+        const b = document.getElementById('build-btn');
+        b.classList.add('btn-stop'); b.innerHTML = "🛑<span>Done</span>";
+    }
+
+    function stopPathMode() {
+        isPathMode = false;
+        const b = document.getElementById('build-btn');
+        b.classList.remove('btn-stop'); b.innerHTML = "🏗️<span>Build</span>";
+    }
+
+    function act(type) {
+        const tile = getTileAt(player.gx, player.gy);
+        if(!tile) return;
+        if(type === 'plant' && tile.type === 'grass' && money >= 10) {
+            tile.type = 'crop'; tile.growth = 0; money -= 10;
+        } else if(type === 'harvest' && tile.type === 'crop' && tile.growth >= 100) {
+            tile.type = 'grass'; money += 25; inv++;
+        }
+        updateUI();
     }
 
     function updateUI() {
-        moneyEl.innerText = money;
-        cropsEl.innerText = inventory.crops;
+        document.getElementById('m-val').innerText = money;
+        document.getElementById('i-val').innerText = inv;
     }
 
-    // Main Game Loop
     function update() {
-        // Character Movement
-        const dx = player.targetX - player.x;
-        const dy = player.targetY - player.y;
+        const dx = player.tx - player.x;
+        const dy = player.ty - player.y;
         const dist = Math.sqrt(dx*dx + dy*dy);
 
-        if (dist > PLAYER_SPEED) {
-            player.x += (dx / dist) * PLAYER_SPEED;
-            player.y += (dy / dist) * PLAYER_SPEED;
+        if(dist > player.speed) {
+            const nextX = player.x + (dx/dist) * player.speed;
+            const nextY = player.y + (dy/dist) * player.speed;
+
+            // Collision Detection: Check both X and Y separately for "sliding" effect
+            if(isWalkable(nextX, player.y)) player.x = nextX;
+            if(isWalkable(player.x, nextY)) player.y = nextY;
+            
         } else {
-            player.x = player.targetX;
-            player.y = player.targetY;
+            player.x = player.tx; player.y = player.ty;
         }
 
-        // Camera Follow
-        camera.x = -player.x + canvas.width / 2;
-        camera.y = -player.y + canvas.height / 2;
+        player.gx = Math.floor(player.x / TILE_SIZE);
+        player.gy = Math.floor(player.y / TILE_SIZE);
 
-        // Crop Growth Logic
-        grid.forEach(tile => {
-            if (tile.type === 'crop' && tile.growth < 100) {
-                tile.growth += 0.1; // Slow growth
+        if (isPathMode) {
+            const tile = getTileAt(player.gx, player.gy);
+            if (tile && tile.type === 'grass' && money >= 2) {
+                tile.type = 'path'; money -= 2; updateUI();
             }
-        });
+        }
+
+        camera.x = Math.max(Math.min(0, -player.x + canvas.width/2), -(WORLD_SIZE - canvas.width));
+        camera.y = Math.max(Math.min(0, -player.y + canvas.height/2), -(WORLD_SIZE - canvas.height));
+        grid.forEach(t => { if(t.type === 'crop' && t.growth < 100) t.growth += 0.12; });
     }
 
     function draw() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        ctx.save();
+        ctx.fillStyle = '#1e3d1a'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.save(); 
         ctx.translate(camera.x, camera.y);
 
-        // Draw Grid
-        grid.forEach(tile => {
-            const tx = tile.x * TILE_SIZE;
-            const ty = tile.y * TILE_SIZE;
+        grid.forEach(t => {
+            const tx = t.x * TILE_SIZE; const ty = t.y * TILE_SIZE;
+            if (tx + TILE_SIZE + camera.x < 0 || tx + camera.x > canvas.width || ty + TILE_SIZE + camera.y < 0 || ty + camera.y > canvas.height) return;
 
-            // Draw Base Tile
-            ctx.fillStyle = '#2ecc71'; // Grass
-            ctx.fillRect(tx, ty, TILE_SIZE - 2, TILE_SIZE - 2);
+            if (t.type === 'path') { ctx.fillStyle = '#c2b280'; ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE); }
+            else { ctx.fillStyle = t.color; ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE); }
 
-            if (tile.type === 'crop') {
-                ctx.fillStyle = tile.growth >= 100 ? '#f1c40f' : '#27ae60';
-                const size = (tile.growth / 100) * (TILE_SIZE - 20);
-                ctx.fillRect(tx + (TILE_SIZE-size)/2, ty + (TILE_SIZE-size)/2, size, size);
-            } else if (tile.type === 'building') {
-                ctx.fillStyle = '#7f8c8d'; // Building base
-                ctx.fillRect(tx + 5, ty + 5, TILE_SIZE - 10, TILE_SIZE - 10);
-                ctx.fillStyle = '#c0392b'; // Roof
-                ctx.beginPath();
-                ctx.moveTo(tx + 5, ty + 20);
-                ctx.lineTo(tx + TILE_SIZE/2, ty + 5);
-                ctx.lineTo(tx + TILE_SIZE - 5, ty + 20);
-                ctx.fill();
+            ctx.textAlign = 'center';
+            if(t.type === 'crop') {
+                const sz = 15 + t.growth * 0.4; ctx.font = `${sz}px Arial`;
+                ctx.fillText(t.growth >= 100 ? '🌾' : '🌱', tx+TILE_SIZE/2, ty+TILE_SIZE/2 + 10);
+            } else if(t.type === 'building') {
+                ctx.font = '55px Arial'; ctx.fillText(t.icon, tx+TILE_SIZE/2, ty+TILE_SIZE/2 + 20);
             }
         });
 
-        // Draw Player
-        ctx.fillStyle = player.color;
-        ctx.beginPath();
-        ctx.arc(player.x, player.y, 15, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = 'white';
-        ctx.lineWidth = 3;
-        ctx.stroke();
+        if (selectedItem && previewPos) {
+            ctx.save();
+            ctx.globalAlpha = 0.4;
+            ctx.font = '55px Arial'; ctx.textAlign = 'center';
+            ctx.fillText(selectedItem.icon, (previewPos.gx * TILE_SIZE) + TILE_SIZE/2, (previewPos.gy * TILE_SIZE) + TILE_SIZE/2 + 20);
+            ctx.restore();
+        }
+
+        ctx.strokeStyle = '#5d4037'; ctx.lineWidth = 15; ctx.strokeRect(0, 0, WORLD_SIZE, WORLD_SIZE);
+        ctx.font = '55px Arial'; ctx.textAlign = 'center';
+        ctx.fillText('👩‍🌾', player.x, player.y + 15);
 
         ctx.restore();
-
-        update();
-        requestAnimationFrame(draw);
+        update(); requestAnimationFrame(draw);
     }
-
     draw();
 </script>
 </body>
