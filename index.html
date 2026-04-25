@@ -25,7 +25,7 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.4); font-size: 18px;
         }
 
-        /* Build Menu */
+        /* Full Screen Catalog */
         #build-screen {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.92); z-index: 100;
@@ -47,7 +47,7 @@
         .building-card .name { font-size: 10px; font-weight: bold; margin-top: 4px; text-align: center; }
         .building-card .price { color: #27ae60; font-weight: bold; font-size: 12px; }
 
-        /* Placement Buttons */
+        /* Approval UI */
         #confirm-layer {
             position: absolute; bottom: 120px; width: 100%;
             display: none; justify-content: center; gap: 40px; z-index: 50;
@@ -75,7 +75,6 @@
         .btn-p { background: #2ecc71; }
         .btn-h { background: #f1c40f; color: #8b4513; }
         .btn-b { background: #8b4513; }
-        .btn-stop { background: #e74c3c !important; border-radius: 15px !important; }
     </style>
 </head>
 <body>
@@ -91,15 +90,15 @@
     </div>
 
     <div id="build-screen">
-        <h2 style="color: #f1c40f; margin-bottom: 10px;">Village Market</h2>
+        <h2 style="color: #f1c40f; margin-bottom: 10px;">Village Catalog</h2>
         <div id="build-grid"></div>
-        <button style="margin-top:20px; padding:12px 30px; background:#666; border:none; color:white; border-radius:20px;" onclick="closeBuildMenu()">CLOSE</button>
+        <button style="margin-top:20px; padding:12px 30px; background:#666; border:none; color:white; border-radius:20px;" onclick="closeBuildMenu()">BACK TO FARM</button>
     </div>
 
     <div id="controls">
         <div class="btn btn-p" onclick="act('plant')">🌱<span>Sow</span></div>
         <div class="btn btn-h" onclick="act('harvest')">🧺<span>Pick</span></div>
-        <div class="btn btn-b" id="build-btn" onclick="openBuildMenu()">🏗️<span>Build</span></div>
+        <div class="btn btn-b" onclick="openBuildMenu()">🏗️<span>Build</span></div>
     </div>
 
     <canvas id="gameCanvas"></canvas>
@@ -115,35 +114,33 @@
     let money = 500;
     let inv = 0;
     let camera = { x: 0, y: 0 };
-    let isPathMode = false;
-    let selectedItem = null;
-    let previewPos = null;
     
-    // Farmer settings
+    let selectedItem = null; // Stores building or path
+    let previewPos = null;   // {gx, gy}
+    
     const player = { 
         x: WORLD_SIZE/2, y: WORLD_SIZE/2, 
         tx: WORLD_SIZE/2, ty: WORLD_SIZE/2, 
         gx: 0, gy: 0, 
-        speed: 5,
-        colSize: 15 // Collision radius
+        speed: 5
     };
 
-    const buildings = [
-        { id: 'path', name: 'Dirt Path', price: 2, icon: '👣' },
-        { id: 'house', name: 'Farmhouse', price: 50, icon: '🏡' },
-        { id: 'barn', name: 'Barn', price: 150, icon: '🏚️' },
-        { id: 'windmill', name: 'Windmill', price: 200, icon: '🎡' },
-        { id: 'well', name: 'Well', price: 40, icon: '⛲' },
-        { id: 'coop', name: 'Coop', price: 80, icon: '🛖' },
-        { id: 'silo', name: 'Silo', price: 120, icon: '🗼' },
-        { id: 'green', name: 'Greenhouse', price: 300, icon: '🏠' },
-        { id: 'shed', name: 'Shed', price: 30, icon: '🏚' },
-        { id: 'tower', name: 'Water Tower', price: 250, icon: '🏗️' },
-        { id: 'apiary', name: 'Apiary', price: 90, icon: '🐝' },
-        { id: 'orchard', name: 'Orchard', price: 60, icon: '🌳' },
-        { id: 'vine', name: 'Vineyard', price: 100, icon: '🍇' },
-        { id: 'fountain', name: 'Fountain', price: 500, icon: '⛲' },
-        { id: 'statue', name: 'Statue', price: 1000, icon: '🗿' }
+    const catalog = [
+        { id: 'path', name: 'Dirt Road', price: 5, icon: '👣', type: 'path' },
+        { id: 'house', name: 'Farmhouse', price: 50, icon: '🏡', type: 'build' },
+        { id: 'barn', name: 'Barn', price: 150, icon: '🏚️', type: 'build' },
+        { id: 'windmill', name: 'Windmill', price: 200, icon: '🎡', type: 'build' },
+        { id: 'well', name: 'Well', price: 40, icon: '⛲', type: 'build' },
+        { id: 'coop', name: 'Coop', price: 80, icon: '🛖', type: 'build' },
+        { id: 'silo', name: 'Silo', price: 120, icon: '🗼', type: 'build' },
+        { id: 'green', name: 'Greenhouse', price: 300, icon: '🏠', type: 'build' },
+        { id: 'shed', name: 'Shed', price: 30, icon: '🏚', type: 'build' },
+        { id: 'tower', name: 'Water Tower', price: 250, icon: '🏗️', type: 'build' },
+        { id: 'apiary', name: 'Apiary', price: 90, icon: '🐝', type: 'build' },
+        { id: 'orchard', name: 'Orchard', price: 60, icon: '🌳', type: 'build' },
+        { id: 'vine', name: 'Vineyard', price: 100, icon: '🍇', type: 'build' },
+        { id: 'fountain', name: 'Fountain', price: 500, icon: '⛲', type: 'build' },
+        { id: 'statue', name: 'Statue', price: 1000, icon: '🗿', type: 'build' }
     ];
 
     const grid = Array.from({length: GRID_SIZE * GRID_SIZE}, (_, i) => ({
@@ -153,18 +150,15 @@
     }));
 
     const buildGrid = document.getElementById('build-grid');
-    buildings.forEach(b => {
+    catalog.forEach(item => {
         const card = document.createElement('div');
         card.className = 'building-card';
-        card.innerHTML = `<div class="icon">${b.icon}</div><div class="name">${b.name}</div><div class="price">$${b.price}</div>`;
+        card.innerHTML = `<div class="icon">${item.icon}</div><div class="name">${item.name}</div><div class="price">$${item.price}</div>`;
         card.onclick = () => {
             closeBuildMenu();
-            if(b.id === 'path') startPathMode();
-            else {
-                selectedItem = b;
-                document.getElementById('confirm-layer').style.display = 'flex';
-                previewPos = {gx: player.gx, gy: player.gy};
-            }
+            selectedItem = item;
+            document.getElementById('confirm-layer').style.display = 'flex';
+            previewPos = {gx: player.gx, gy: player.gy};
         };
         buildGrid.appendChild(card);
     });
@@ -183,14 +177,12 @@
         if (selectedItem) {
             previewPos = { gx, gy };
         } else {
-            // Only walk to destination if it's not a building
-            const targetTile = getTileAt(gx, gy);
             player.tx = Math.max(30, Math.min(wx, WORLD_SIZE - 30));
             player.ty = Math.max(30, Math.min(wy, WORLD_SIZE - 30));
         }
     });
 
-    function getTileAt(gx, gy) {
+    function getTile(gx, gy) {
         if(gx < 0 || gx >= GRID_SIZE || gy < 0 || gy >= GRID_SIZE) return null;
         return grid[gy * GRID_SIZE + gx];
     }
@@ -198,24 +190,19 @@
     function isWalkable(wx, wy) {
         const gx = Math.floor(wx / TILE_SIZE);
         const gy = Math.floor(wy / TILE_SIZE);
-        const tile = getTileAt(gx, gy);
-        if(!tile) return false;
-        // Block player if tile is a building
-        return tile.type !== 'building';
+        const tile = getTile(gx, gy);
+        return tile && tile.type !== 'building';
     }
 
     function cancelPlacement() {
-        selectedItem = null;
-        previewPos = null;
+        selectedItem = null; previewPos = null;
         document.getElementById('confirm-layer').style.display = 'none';
     }
 
     function confirmPlacement() {
-        if (!previewPos || !selectedItem) return;
-        const tile = getTileAt(previewPos.gx, previewPos.gy);
-        // Only place on empty grass
+        const tile = getTile(previewPos.gx, previewPos.gy);
         if (tile && tile.type === 'grass' && money >= selectedItem.price) {
-            tile.type = 'building';
+            tile.type = (selectedItem.id === 'path') ? 'path' : 'building';
             tile.icon = selectedItem.icon;
             money -= selectedItem.price;
             updateUI();
@@ -223,23 +210,11 @@
         }
     }
 
-    function openBuildMenu() { if(isPathMode) stopPathMode(); else document.getElementById('build-screen').classList.add('active'); }
+    function openBuildMenu() { document.getElementById('build-screen').classList.add('active'); }
     function closeBuildMenu() { document.getElementById('build-screen').classList.remove('active'); }
 
-    function startPathMode() {
-        isPathMode = true;
-        const b = document.getElementById('build-btn');
-        b.classList.add('btn-stop'); b.innerHTML = "🛑<span>Done</span>";
-    }
-
-    function stopPathMode() {
-        isPathMode = false;
-        const b = document.getElementById('build-btn');
-        b.classList.remove('btn-stop'); b.innerHTML = "🏗️<span>Build</span>";
-    }
-
     function act(type) {
-        const tile = getTileAt(player.gx, player.gy);
+        const tile = getTile(player.gx, player.gy);
         if(!tile) return;
         if(type === 'plant' && tile.type === 'grass' && money >= 10) {
             tile.type = 'crop'; tile.growth = 0; money -= 10;
@@ -260,26 +235,14 @@
         const dist = Math.sqrt(dx*dx + dy*dy);
 
         if(dist > player.speed) {
-            const nextX = player.x + (dx/dist) * player.speed;
-            const nextY = player.y + (dy/dist) * player.speed;
-
-            // Collision Detection: Check both X and Y separately for "sliding" effect
-            if(isWalkable(nextX, player.y)) player.x = nextX;
-            if(isWalkable(player.x, nextY)) player.y = nextY;
-            
-        } else {
-            player.x = player.tx; player.y = player.ty;
-        }
+            const nx = player.x + (dx/dist) * player.speed;
+            const ny = player.y + (dy/dist) * player.speed;
+            if(isWalkable(nx, player.y)) player.x = nx;
+            if(isWalkable(player.x, ny)) player.y = ny;
+        } else { player.x = player.tx; player.y = player.ty; }
 
         player.gx = Math.floor(player.x / TILE_SIZE);
         player.gy = Math.floor(player.y / TILE_SIZE);
-
-        if (isPathMode) {
-            const tile = getTileAt(player.gx, player.gy);
-            if (tile && tile.type === 'grass' && money >= 2) {
-                tile.type = 'path'; money -= 2; updateUI();
-            }
-        }
 
         camera.x = Math.max(Math.min(0, -player.x + canvas.width/2), -(WORLD_SIZE - canvas.width));
         camera.y = Math.max(Math.min(0, -player.y + canvas.height/2), -(WORLD_SIZE - canvas.height));
@@ -288,8 +251,7 @@
 
     function draw() {
         ctx.fillStyle = '#1e3d1a'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.save(); 
-        ctx.translate(camera.x, camera.y);
+        ctx.save(); ctx.translate(camera.x, camera.y);
 
         grid.forEach(t => {
             const tx = t.x * TILE_SIZE; const ty = t.y * TILE_SIZE;
@@ -307,17 +269,25 @@
             }
         });
 
+        // GHOST PREVIEW (Works for Road AND Buildings)
         if (selectedItem && previewPos) {
+            const ptx = previewPos.gx * TILE_SIZE;
+            const pty = previewPos.gy * TILE_SIZE;
             ctx.save();
             ctx.globalAlpha = 0.4;
-            ctx.font = '55px Arial'; ctx.textAlign = 'center';
-            ctx.fillText(selectedItem.icon, (previewPos.gx * TILE_SIZE) + TILE_SIZE/2, (previewPos.gy * TILE_SIZE) + TILE_SIZE/2 + 20);
+            if (selectedItem.id === 'path') {
+                ctx.fillStyle = '#c2b280'; ctx.fillRect(ptx, pty, TILE_SIZE, TILE_SIZE);
+            } else {
+                ctx.font = '55px Arial'; ctx.textAlign = 'center';
+                ctx.fillText(selectedItem.icon, ptx + TILE_SIZE/2, pty + TILE_SIZE/2 + 20);
+            }
             ctx.restore();
+            ctx.strokeStyle = 'white'; ctx.lineWidth = 3; ctx.strokeRect(ptx+4, pty+4, TILE_SIZE-8, TILE_SIZE-8);
         }
 
         ctx.strokeStyle = '#5d4037'; ctx.lineWidth = 15; ctx.strokeRect(0, 0, WORLD_SIZE, WORLD_SIZE);
         ctx.font = '55px Arial'; ctx.textAlign = 'center';
-        ctx.fillText('👩‍🌾', player.x, player.y + 15);
+        ctx.fillText('👨‍🌾', player.x, player.y + 15);
 
         ctx.restore();
         update(); requestAnimationFrame(draw);
